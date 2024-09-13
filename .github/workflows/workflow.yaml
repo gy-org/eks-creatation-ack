@@ -1,0 +1,45 @@
+name: Create Amazon EKS
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: ' The name of your EKS cluster'
+        required: true
+      region:
+        description: 'The AWS region where the cluster will be deployed'
+        required: true
+      version:
+        description: 'EKS version'
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-region: us-east-1
+          
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+     # update the context to the EKS cluster of ACK
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name karpenter-demo --region us-east-1
+
+      - name: Create new EKS Cluster using ACK
+        run: |
+          export CLUSTER_NAME={% raw %}${{ github.event.inputs.clusterName }}{% endraw %}
+          export VERSION={% raw %}${{ github.event.inputs.version }}{% endraw %}
+          export REGION={% raw %}${{ github.event.inputs.region }}{% endraw %}
+          envsubst < ack/cluster.yaml | kubectl apply -f - 
